@@ -7,7 +7,7 @@ from django.db.models import Q
 
 
 
-from files.models import IMAGES,VIDEOS,TestFile
+from files.models import IMAGES, VIDEOS, TestFile, ChannelId
 from users.models import User
 
 
@@ -45,10 +45,10 @@ def About_litsey(update: Update, context: CallbackContext) -> None:
 def Get_answers(update: Update, context: CallbackContext) -> None:
 
     msg = update.message.text
-    # Regular expression pattern
-    pattern = re.compile(r'^\d+\*[A-Z]+$')
+    pattern = re.compile(r'^\d+\*[A-Za-z]+$')
 
-    if pattern.match(msg):        
+
+    if pattern.match(msg):
         msg=msg.split('*')
         update.message.reply_text(text=f"Tekshirib Chiqqaninggizga Ishonchingiz komilmi ?\nTest kodi: {msg[0]}\nJavobingiz: {msg[1]}",
         reply_markup=menu_keyboard.Answers_confirm(),)
@@ -57,46 +57,43 @@ def Get_answers(update: Update, context: CallbackContext) -> None:
     else:
         update.message.reply_text(text="Javoblaringiz namuna singari emas\nQayta tekshirib yuboring!")
     
-    return WAITING_ANSWER  
+    return WAITING_ANSWER
+
 
 def Checking_answers(update: Update, context: CallbackContext) -> None:
-    
     query = update.callback_query
     query.answer()
-    context.bot.delete_message(chat_id=query.from_user.id, message_id=query.message.message_id) 
+    context.bot.delete_message(chat_id=query.from_user.id, message_id=query.message.message_id)
 
-
-    if query.data=="not_confirmed":
+    if query.data == "not_confirmed":
         context.bot.send_message(chat_id=query.message.chat_id,
                                  text="Tekshirib olib qayta yuboring !")
         return WAITING_ANSWER
     else:
-        xabar=''
+        xabar = ''
 
         current_local_time = timezone.localtime(timezone.now())
         u = User.objects.get_or_none(user_id=query.message.chat_id)
 
-        
         if current_local_time.time() > u.Expired_time:
-            xabar="🙁Sizning 2 soat vaqtinggiz o'z nihoyasiga yitganligi tufayli Test ko'rsatgichingiz Nol ga tenglashtirildi🗣"
-            
+            xabar = "🙁Sizning 2 soat vaqtinggiz o'z nihoyasiga yitganligi tufayli Test ko'rsatgichingiz Nol ga tenglashtirildi🗣"
+
             context.bot.send_message(chat_id=query.message.chat_id,
-                                    text=xabar)
+                                     text=xabar)
             context.bot.send_message(chat_id=query.message.chat_id,
-            text="Bosh sahifa.",reply_markup=menu_keyboard.main_keys())
+                                     text="Bosh sahifa.", reply_markup=menu_keyboard.main_keys())
             u.Answer_rate = "\n💀Test vaqtiga ulgura olmagan !"
             u.save()
-            
-        
+
+
         else:
 
             context.bot.send_message(chat_id=query.message.chat_id,
-                                    text="🔍Tekshirildi !")
-            
+                                     text="🔍Tekshirildi !")
 
-            msg_answer=context.user_data['msg'].split('*')
+            msg_answer = context.user_data['msg'].split('*')
 
-            right_answer_qs=TestFile.objects.filter(Q(description__iregex=rf'\b{msg_answer[0]}\*'))
+            right_answer_qs = TestFile.objects.filter(Q(description__iregex=rf'\b{msg_answer[0]}\*'))
             right_answer_obj = right_answer_qs.first()
 
             if right_answer_obj:  # Check if the object exists
@@ -106,12 +103,17 @@ def Checking_answers(update: Update, context: CallbackContext) -> None:
             if right_answer_description:
                 right_answer = right_answer_description.split('*')
 
-
             #
-            user_answers = str(msg_answer[1])
-            correct_answers = str(right_answer[1])
+            user_answers = str(msg_answer[1]).lower()
+            correct_answers = str(right_answer[1]).lower()
             correct_count = 0
             incorrect_count = 0
+
+            ###Uzunligini tekshirish
+            if len(user_answers) != len(correct_answers):
+                context.bot.send_message(chat_id=query.message.chat_id,
+                                         text=f"Testlar soni {len(correct_answers)}ta edi,lekin siz {len(user_answers)}ta Javob yubordinnigz !\nTekshirib qayta yuboring !")
+                return WAITING_ANSWER
 
             for user_answer, correct_answer in zip(user_answers, correct_answers):
                 if user_answer == correct_answer:
@@ -123,36 +125,36 @@ def Checking_answers(update: Update, context: CallbackContext) -> None:
 
             # Calculate the user's score as a percentage
             user_percentage = (correct_count / total_questions) * 100
-            xabar=(f"Ko'rsatgich: {user_percentage:.1f}%")
-            xabar+=(f"\n\n🔷Savollar soni: {total_questions} ta\n✅To'g'rilari soni: {correct_count} ta\n❌Xatolar soni: {incorrect_count} ta")
+            xabar = (f"Ko'rsatgich: {user_percentage:.1f}%")
+            xabar += (
+                f"\n\n🔷Savollar soni: {total_questions} ta\n✅To'g'rilari soni: {correct_count} ta\n❌Xatolar soni: {incorrect_count} ta")
             #
             context.bot.send_message(chat_id=query.message.chat_id,
-                                    text=xabar)
+                                     text=xabar)
             context.bot.send_message(chat_id=query.message.chat_id,
-                                    text='Test yakunlandi⌛️\nEtiboringiz uchun Rahmat❗️\nSiz bosh Sahifadasiz.',reply_markup=menu_keyboard.main_keys())
+                                     text='Test yakunlandi⌛️\nEtiboringiz uchun Rahmat❗️\nSiz bosh Sahifadasiz.',
+                                     reply_markup=menu_keyboard.main_keys())
 
-
-            xabar+=(f"\nTest raqami: {right_answer[0]}\nJavobingiz: {msg_answer[1]}")
+            xabar += (f"\nTest raqami: {right_answer[0]}\nJavobingiz: {msg_answer[1]}")
 
             User.objects.filter(user_id=query.message.chat_id).update(Answer_rate=xabar)
-        
 
         # Adminga yuborish
-        
+
         try:
             u = User.objects.get_or_none(user_id=query.message.chat_id)
+            kanal_id=ChannelId.objects.get(id=99)
+            msg = f"👤User Test ishladi🔻\n\nkim:{u.first_name} {u.last_name}\nUsername: @{u.username}\nTel 📱 +{u.phone_number}\nTugagan vaqt: 🕰 {u.Expired_time}\n\n"
+            # print('-100' + kanal_id)
+            kanal_id=int('100' + str(kanal_id.channel_id))
 
-            msg=f"👤User Test ishladi🔻\n\nkim:{u.first_name} {u.last_name}\nUsername: @{u.username}\nTel 📱 +{u.phone_number}\nTugagan vaqt: 🕰 {u.Expired_time}\n\n"
-           
-            context.bot.send_message(chat_id=-1001920502472,
-                                    text=msg+xabar)
-                        
-        except:
-            pass
+            context.bot.send_message(chat_id=-kanal_id,
+                                     text=msg + xabar)
+
+        except Exception as inst:
+            print(inst)
 
         return CHOOSE
-
-
 
 
 def Prepare_testing(update: Update, context: CallbackContext) -> None:
@@ -252,8 +254,19 @@ def Give_test(update: Update, context: CallbackContext) -> None:
 #         update.message.bot.send_message(chat_id=update.message.chat_id, text="Not enough videos available.")
 
 #     return CHOOSE
+def change_channel_id(update, context):
+    """ Show help info about all secret admins commands """
+    u = User.get_user(update, context)
+    message = update.message.text.split(" ")
+    # print(message)
+    if u.is_admin:
+        the_id=ChannelId.objects.get(id=99)
+        the_id.channel_id=message[1]
+        the_id.save()
+        update.message.reply_text(f"{message[1]} ga O'zgardi !\n ")
+        # update.message.reply_text(text="Saved !")
 
-
+    return CHOOSE
      
 
 

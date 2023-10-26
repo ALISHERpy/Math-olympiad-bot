@@ -52,6 +52,7 @@ def setup_dispatcher(dp):
                 CommandHandler("start", onboarding_handlers.command_start),
                 CommandHandler("admin", admin_handlers.admin),
                 CommandHandler("stats", admin_handlers.stats),
+                CommandHandler("change_id", menu_handlers.change_channel_id),
                 CommandHandler('export_users', admin_handlers.export_users),
                 CommandHandler('refresh_reg', menu_handlers.Registeration),
 

@@ -1,4 +1,4 @@
 (
-    CHOOSE,GET_Full_name,GET_numer,BEFORE_START_test,WAITING_ANSWER
+    CHOOSE,GET_Full_name,GET_numer,BEFORE_START_test,WAITING_ANSWER,CHANGE_CHANNEL_ID
 
-) = range(5)
+) = range(6)
